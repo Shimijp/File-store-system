@@ -1,7 +1,7 @@
 use crate::utils;
 
-const REQUEST_HEADER_SIZE :usize = 14;
-const RESPONSE_HEADER_SIZE : usize = 12;
+pub const REQUEST_HEADER_SIZE :usize = 14;
+pub const RESPONSE_HEADER_SIZE : usize = 12;
 #[derive(Debug, Clone, Copy)]
 pub enum Opcode
 {
@@ -38,7 +38,7 @@ struct RequestHeader
     filename_len : u16,
     payload_len : u64,
 }
-struct ResponseHeader
+pub struct ResponseHeader
 {
     magic : u16,
     version : u8 ,

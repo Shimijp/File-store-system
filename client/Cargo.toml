@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 # Link to our local library
 protocol = { path = "../protocol" }
+
+tokio = { version = "1", features = ["full"] }
