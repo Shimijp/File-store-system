@@ -1,4 +1,5 @@
 use crate::utils;
+use crate::utils::ErrorCode;
 
 pub const REQUEST_HEADER_SIZE :usize = 14;
 pub const RESPONSE_HEADER_SIZE : usize = 12;
@@ -24,13 +25,8 @@ pub enum StatusCode
 
 
 }
-pub enum Error
-{
-    BadRequest,
-    BadResponse
 
-}
-struct RequestHeader
+pub(crate) struct RequestHeader
 {
     magic : u16 ,
     version :u8,
@@ -106,12 +102,12 @@ impl Into<[u8;REQUEST_HEADER_SIZE]> for RequestHeader
 
 impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for RequestHeader
 {
-    type Error = Error;
+    type Error = ErrorCode;
 
     fn try_from(buffer: &[u8;REQUEST_HEADER_SIZE]) -> Result<Self, Self::Error> {
         let magic = u16::from_be_bytes(buffer[..2].try_into().unwrap());
         if magic != utils::MAGIC {
-            return Err(Error::BadRequest)
+            return Err(ErrorCode::ErrorBadResponse)
         }
         let version = buffer[2];
         let opcode_byte = buffer[3];
@@ -125,7 +121,7 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for RequestHeader
             0x4 => Opcode::DELETE,
             _ =>
                 {
-                    return Err(Error::BadRequest)
+                    return Err(ErrorCode::ErrorBadResponse)
                 }
         };
         Ok(
@@ -143,12 +139,12 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for RequestHeader
 
 impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for ResponseHeader
 {
-    type Error = Error;
+    type Error = ErrorCode;
 
     fn try_from(buffer: &[u8; REQUEST_HEADER_SIZE]) -> Result<Self, Self::Error> {
         let magic = u16::from_be_bytes(buffer[..2].try_into().unwrap());
         if magic != utils::MAGIC {
-            return Err(Error::BadRequest)
+            return Err(ErrorCode::ErrorBadRequest)
         }
         let version = buffer[2];
         let status_code_byte = buffer[3];
@@ -159,7 +155,7 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for ResponseHeader
             0x02 => StatusCode::ErrorExists,
             0x03 => StatusCode::ErrorIo,
             0xFF => StatusCode::ErrorBadRequest,
-            _ => return Err(Error::BadResponse)
+            _ => return Err(ErrorCode::ErrorBadResponse)
 
 
         };
