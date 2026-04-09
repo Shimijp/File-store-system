@@ -43,6 +43,7 @@ where
     fn try_into(self) -> Result<Vec<u8>, Self::Error> {
         let mut buffer = Vec::new();
         let header_bytes : [u8;REQUEST_HEADER_SIZE] = self.header.into();
+
         let body_bytes = match self.content.try_into()
         {
             Ok(bytes) => bytes,
@@ -141,7 +142,7 @@ impl Request<ListReq>
 
 impl Request<DownloadReq>
 {
-    fn new(filename: String, filename_len: u16) -> Self
+    pub fn new(filename: String, filename_len: u16) -> Self
     {
         Request{
             header : RequestHeader::new(
@@ -157,7 +158,7 @@ impl Request<DownloadReq>
 
 impl Request<DeleteReq>
 {
-    fn new(filename: String, filename_len: u16) -> Self
+    pub fn new(filename: String, filename_len: u16) -> Self
     {
         Request{
             header : RequestHeader::new(
@@ -173,7 +174,7 @@ impl Request<DeleteReq>
 
 impl Request<UploadReq>
 {
-    fn new(filename: String, filename_len: u16, payload_size: u64, chunk: Vec<u8>) -> Self
+    pub fn new(filename: String, filename_len: u16, payload_size: u64, chunk: Vec<u8>) -> Self
     {
         Request{
             header : RequestHeader::new(

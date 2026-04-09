@@ -26,7 +26,7 @@ pub enum StatusCode
 
 }
 
-pub(crate) struct RequestHeader
+pub struct RequestHeader
 {
     magic : u16 ,
     version :u8,
@@ -41,6 +41,7 @@ pub struct ResponseHeader
     status_code : StatusCode ,
     payload_len : u64,
 }
+
 impl RequestHeader
 {
     pub fn new( opcode: Opcode, filename_len: u16, payload_len: u64)->Self
@@ -53,6 +54,13 @@ impl RequestHeader
             filename_len,
             payload_len
         }
+    }
+    pub fn get_opcode(&self) -> Opcode{
+        self.opcode
+    }
+    pub fn get_payload_len(self)-> u64
+    {
+        self.payload_len
     }
 }
 
@@ -67,6 +75,13 @@ impl ResponseHeader
             status_code,
             payload_len
         }
+    }
+    pub fn get_status_code(&self)->StatusCode{
+        self.status_code
+    }
+    pub fn get_payload_len(&self)-> u64
+    {
+        self.payload_len
     }
 }
 impl Into<[u8;RESPONSE_HEADER_SIZE]> for ResponseHeader
@@ -112,7 +127,7 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for RequestHeader
         let version = buffer[2];
         let opcode_byte = buffer[3];
         let filename_len = u16::from_be_bytes(buffer[4..6].try_into().unwrap());
-        let payload_len = u64::from_be_bytes(buffer[7 .. REQUEST_HEADER_SIZE].try_into().unwrap());
+        let payload_len = u64::from_be_bytes(buffer[6 .. REQUEST_HEADER_SIZE].try_into().unwrap());
 
         let opcode = match opcode_byte {
             0x1 => Opcode::LIST,
@@ -137,18 +152,18 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for RequestHeader
     }
 }
 
-impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for ResponseHeader
+impl TryFrom<&[u8;RESPONSE_HEADER_SIZE]> for ResponseHeader
 {
     type Error = ErrorCode;
 
-    fn try_from(buffer: &[u8; REQUEST_HEADER_SIZE]) -> Result<Self, Self::Error> {
+    fn try_from(buffer: &[u8; RESPONSE_HEADER_SIZE]) -> Result<Self, Self::Error> {
         let magic = u16::from_be_bytes(buffer[..2].try_into().unwrap());
         if magic != utils::MAGIC {
             return Err(ErrorCode::ErrorBadRequest)
         }
         let version = buffer[2];
         let status_code_byte = buffer[3];
-        let payload_len = u64::from_be_bytes(buffer[4..].try_into().unwrap());
+        let payload_len = u64::from_be_bytes(buffer[4..RESPONSE_HEADER_SIZE].try_into().unwrap());
         let status_code = match status_code_byte  {
             0x00 => StatusCode::Ok,
             0x01 => StatusCode::ErrorNotFound,
@@ -167,5 +182,11 @@ impl TryFrom<&[u8;REQUEST_HEADER_SIZE]> for ResponseHeader
             payload_len
         })
 
+    }
+}
+impl PartialEq for Opcode
+{
+    fn eq(&self, other: &Self) -> bool {
+         *self as u8 == *other as u8
     }
 }
