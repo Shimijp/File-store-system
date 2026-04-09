@@ -2,7 +2,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use protocol::header::{ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
 use protocol::request::{ListReq, Request};
-use protocol::response::{ErrorResp, ListResp, Response};
 use protocol::utils::ErrorCode;
 use protocol::utils::ErrorCode::ErrorConnection;
 use crate::handle_response::handle_response_header;
