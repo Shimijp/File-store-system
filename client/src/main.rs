@@ -4,7 +4,7 @@ mod handle_response;
 use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 use tokio::net::TcpSocket;
 use crate::request_handler::send_list_request;
 use dotenvy::dotenv;
@@ -20,6 +20,7 @@ async fn main()  -> Result<(), Box<dyn Error>>{
 
     let port = server_port_str.parse()?;
     let addr = SocketAddr::new(server_ip_addr, port);
+    println!("connecting to server on: {addr}...");
     let socket = TcpSocket::new_v4()?;
     let mut stream = socket.connect(addr).await?;
     match send_list_request(&mut stream).await
