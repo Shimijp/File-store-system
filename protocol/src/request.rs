@@ -26,7 +26,7 @@ pub struct DeleteReq
     filename : String
 }
 
-struct UploadReq
+pub struct UploadReq
 {
     filename_len : u16,
     filename : String,

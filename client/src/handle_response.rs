@@ -9,22 +9,19 @@ pub async fn handle_response_header(stream : &mut TcpStream, resp_header: &Respo
 {
     println!("expecting {} from server", resp_header.get_payload_len());
     let mut resp_buff = vec![0u8;resp_header.get_payload_len() as usize];
-    let n = match stream.read_exact(&mut resp_buff).await
-    {
-        Ok(0) =>
-            {
-                println!("server closed connection!");
-                return Err(ErrorConnection)
-            },
-        Ok(n) => println!("received {n} bytes from server"),
-        Err(e) =>
-            {
-                eprintln!("error occurred : {:?}", e);
-                return Err(ErrorCode::UnknownErr)
-            }
+    let n =  stream.read_exact(&mut resp_buff).await
+        .map_err(|_| ErrorConnection)?;
 
-    };
-    let list_resp = ListResp::try_from(&resp_buff)?;
+    match resp_header.get_status_code()
+    {
+        ListResp => return handle_list_response(&resp_buff)
+    }
+    Ok(())
+}
+
+pub fn handle_list_response(buffer: &Vec<u8>) ->Result<() , ErrorCode>
+{
+    let list_resp = ListResp::try_from(buffer)?;
     println!("{list_resp}");
     Ok(())
 }

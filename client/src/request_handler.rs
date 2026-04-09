@@ -1,9 +1,13 @@
+use std::cmp::{max, min};
+use std::fs::metadata;
+use std::os::windows::fs::MetadataExt;
+use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use protocol::header::{ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
-use protocol::request::{ListReq, Request};
-use protocol::utils::ErrorCode;
-use protocol::utils::ErrorCode::ErrorConnection;
+use protocol::header::{ ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
+use protocol::request::{ListReq, Request, UploadReq};
+use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
+use protocol::utils::ErrorCode::{ErrorConnection, ErrorIo, ErrorNotFound};
 use crate::handle_response::handle_response_header;
 
 pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
@@ -42,5 +46,42 @@ pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
                 return Err(ErrorCode::UnknownErr)
             }
     }
+    Ok(())
+}
+
+pub async fn send_upload_request(file_path: &str , file_name: &str,stream :&mut TcpStream)->Result<(), ErrorCode>
+{
+    let mut file = File::open(file_path).await
+        .map_err(|_| ErrorNotFound)?;
+    let metadata = file.metadata().await
+        .map_err(|_| ErrorIo)?;
+
+
+    //windows specific
+    let payload_size = metadata.file_size();
+    let name_len = file_name.len() as u16;
+    print!("meta data : {:?}", payload_size);
+    let mut first_chunk = vec![0u8; min(MAX_CHUNK_SIZE, payload_size as usize)];
+
+    let n = file.read(&mut first_chunk).await
+        .map_err(|_| ErrorIo)?;
+
+
+    let request = Request::<UploadReq>::new(file_name.to_string(), name_len,payload_size , first_chunk);
+    let req_bytes :Vec<u8> = request.try_into()?;
+    stream.write_all(&req_bytes).await
+        .map_err(|_| ErrorConnection)?;
+    let mut  reminder = payload_size - n as u64;
+    let mut buffer = vec![0u8;min(reminder as usize, MAX_CHUNK_SIZE )];
+    while reminder > 0 {
+        let n =  file.read(&mut buffer).await
+            .map_err(|_| ErrorIo)?;
+        if n == 0 {break}
+
+        stream.write_all(&buffer[..n]).await
+            .map_err(|_| ErrorConnection)?;
+        reminder -=n as u64;
+    }
+
     Ok(())
 }
