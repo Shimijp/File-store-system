@@ -5,8 +5,9 @@ use protocol::request::{ListReq, Request};
 use protocol::response::{ErrorResp, ListResp, Response};
 use protocol::utils::ErrorCode;
 use protocol::utils::ErrorCode::ErrorConnection;
+use crate::handle_response::handle_response_header;
 
-pub async fn send_list_request(stream: &mut TcpStream) ->Result<ListResp, ErrorCode>
+pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
 {
     let list_req = Request::<ListReq>::new();
     let mut  buffer : Vec<u8> = list_req.try_into()?;
@@ -35,36 +36,12 @@ pub async fn send_list_request(stream: &mut TcpStream) ->Result<ListResp, ErrorC
 
     match resp_header.get_status_code()
     {
-        StatusCode::Ok => {},
+        StatusCode::Ok => handle_response_header(stream, & resp_header).await?,
         error =>
             {
                 eprintln!("server responded with error: {:?}", error);
                 return Err(ErrorCode::UnknownErr)
             }
     }
-    println!("expecting {} from server", resp_header.get_payload_len());
-    let mut resp_buff = vec![0u8;resp_header.get_payload_len() as usize];
-    let n = match stream.read_exact(&mut resp_buff).await
-    {
-        Ok(0) =>
-            {
-                println!("server closed connection!");
-                return Err(ErrorConnection)
-            },
-        Ok(n) => println!("received {n} bytes from server"),
-        Err(e) =>
-            {
-                eprintln!("error occurred : {:?}", e);
-                return Err(ErrorCode::UnknownErr)
-            }
-
-    };
-    let list_resp = ListResp::try_from(&resp_buff)?;
-    Ok(list_resp)
-
-
-
-
-
-
+    Ok(())
 }

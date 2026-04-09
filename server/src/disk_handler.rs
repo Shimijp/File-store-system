@@ -19,7 +19,11 @@ pub async fn get_file_lst(path: &str) -> Result<Vec<FileEntry>, io::Error>
                 {
                     list.push(file_entry)
                 },
-            Err(e) => return Err(io::Error::new(FileTooLarge,"this shouldnt happend"))
+            Err(e) =>
+                {
+                    println!("error : {e}");
+                    return Err(io::Error::new(FileTooLarge,"this shouldn't happen"))
+                }
 
         };
 

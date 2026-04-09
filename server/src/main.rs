@@ -9,7 +9,7 @@ use tokio::net::{TcpListener, TcpSocket};
 use protocol::header::{Opcode, RequestHeader};
 use protocol::request::Request;
 use crate::disk_handler::get_file_lst;
-use crate::request_handler::handle_lst_request;
+use crate::request_handler::{handle_header, handle_lst_request};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn Error>>
@@ -34,14 +34,14 @@ async fn main() ->Result<(), Box<dyn Error>>
                                 return;
                             }
                     };
-                    let header = RequestHeader::try_from(&header_buff).unwrap();
-                    if header.get_opcode() == Opcode::LIST
+                    match handle_header(&mut socket, &header_buff).await
                     {
-                        match handle_lst_request(&mut socket).await
-                        {
-                            Ok(()) => {},
-                            Err(e) => println!("error happen sending to client")
-                        }
+                        Ok(()) => {},
+                        Err(e) =>
+                            {
+                                println!("error handling client: {client}");
+                                break
+                            }
                     }
 
 

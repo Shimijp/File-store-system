@@ -7,5 +7,6 @@ edition = "2021"
 # Link to our local library
 protocol = { path = "../protocol" }
 tokio = { version = "1", features = ["full"] }
+lazy_static = "1.5.0"
 
 

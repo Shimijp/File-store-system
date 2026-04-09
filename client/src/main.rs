@@ -1,4 +1,5 @@
 mod request_handler;
+mod handle_response;
 
 use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
@@ -18,7 +19,7 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     match send_list_request(&mut stream).await
     {
         Err(e) => println!("shit went south!"),
-        Ok(list_resp) => println!("{list_resp}")
+        Ok(_) => println!("ok ")
     }
     Ok(())
 
