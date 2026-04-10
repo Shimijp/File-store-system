@@ -52,16 +52,16 @@ pub async fn get_file_lst(path: &str) -> Result<Vec<FileEntry>, io::Error>
 pub async fn creat_new_file(filename: &str)->Result<File, ErrorCode>
 {
     let path = PATH.as_str();
-    let full_path =  path.to_owned() + filename;
-    
+    let full_path =  path.to_owned() +"/" + filename;
+
     let file = File::create_new(full_path).await
         .map_err(|_| ErrorExists)?;
-    
+
     Ok(file)
-    
-    
-    
-    
+
+
+
+
 }
 
 

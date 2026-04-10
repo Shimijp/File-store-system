@@ -87,6 +87,7 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
        .map_err(|_| ErrorConnection)?;
 
    if n == 0 {return Err(ErrorBadRequest)}
+   println!("starting read");
    let request = UploadReq::try_from(&data_buff)?;
    //
    let filename = request.get_file_name();

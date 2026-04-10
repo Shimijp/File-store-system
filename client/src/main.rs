@@ -39,12 +39,13 @@ async fn main()  -> Result<(), Box<dyn Error>>{
                 .await.expect("failed to send request"),
             "2" =>
                 {
-                    let file_path = String::new();
+                    let mut file_path = String::new();
                     println!("enter full file path please");
                     io::stdin()
-                        .read_line(&mut input)
+                        .read_line(&mut file_path)
                         .expect("Failed to read line");
                     let clean_path = file_path.trim();
+                    println!("clean path: {clean_path}");
                     let path = Path::new(clean_path);
                     send_upload_request(path, &mut stream).await
                         .expect("failed to upload file")
