@@ -8,6 +8,8 @@ use protocol::header::{ ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
 use protocol::request::{ListReq, Request, UploadReq};
 use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorConnection, ErrorIo, ErrorNotFound};
+use indicatif::ProgressBar;
+
 use crate::handle_response::{handle_lst_response, handle_upload_response};
 
 pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
@@ -64,7 +66,6 @@ pub async fn send_upload_request(path  : &Path,stream :&mut TcpStream)->Result<(
     let payload_size = metadata.file_size();
 
     let name_len = file_name_str.len() as u16;
-    print!("meta data : {:?}", payload_size);
     let mut first_chunk = vec![0u8; min(MAX_CHUNK_SIZE, payload_size as usize)];
 
     let n = file.read(&mut first_chunk).await
@@ -76,6 +77,7 @@ pub async fn send_upload_request(path  : &Path,stream :&mut TcpStream)->Result<(
     stream.write_all(&req_bytes).await
         .map_err(|_| ErrorConnection)?;
     let mut  reminder = payload_size - n as u64;
+    let bar = ProgressBar::new(reminder);
     let mut buffer = vec![0u8;min(reminder as usize, MAX_CHUNK_SIZE )];
     while reminder > 0 {
         let n =  file.read(&mut buffer).await
@@ -85,7 +87,9 @@ pub async fn send_upload_request(path  : &Path,stream :&mut TcpStream)->Result<(
         stream.write_all(&buffer[..n]).await
             .map_err(|_| ErrorConnection)?;
         reminder -=n as u64;
+        bar.inc(n  as u64);
     }
+    bar.finish();
     let mut resp_buff = [0u8;RESPONSE_HEADER_SIZE];
     stream.read_exact(&mut resp_buff).await
         .map_err(|_| ErrorConnection)?;

@@ -7,6 +7,7 @@ use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorBadRequest, ErrorConnection, ErrorIo};
 use protocol::request::{ UploadReq};
 use crate::disk_handler::{creat_new_file, get_file_lst, PATH};
+use indicatif::ProgressBar;
 
 
 pub async fn request_handler(stream: &mut TcpStream) -> Result<(), ErrorCode>
@@ -97,7 +98,9 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
    file.write_all(first_chunk).await
        .map_err(|_| ErrorIo)?;
 
+
    let mut reminder = payload_size - first_chunk.len() as u64;
+   let bar = ProgressBar::new(reminder);
    let mut buffer = vec![0u8; min(MAX_CHUNK_SIZE, reminder as usize)];
    while reminder > 0 {
       let n = stream.read(&mut buffer).await
@@ -106,7 +109,10 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
       file.write_all(&buffer[..n]).await
           .map_err(|_| ErrorIo)?;
       reminder -= n as u64;
+      bar.inc(n as u64);
+
    }
+   bar.finish();
 
    let resp = Response::<UploadResp>::new();
    let resp_bytes: Vec<u8> = resp.try_into()?;
