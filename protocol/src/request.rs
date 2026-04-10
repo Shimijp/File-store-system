@@ -34,6 +34,12 @@ pub struct UploadReq
     chunk : Vec<u8>
 }
 
+impl UploadReq {
+    pub fn get_file_name(&self) -> &str{
+         self.filename.as_str()
+    }
+}
+
 impl<T> TryInto<Vec<u8>> for Request<T>
 where
     T: TryInto<Vec<u8>, Error = ErrorCode>
@@ -58,7 +64,49 @@ where
         Ok(buffer)
     }
 }
+impl TryFrom<&Vec<u8>> for UploadReq
+{
+    type Error = ErrorCode;
 
+    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
+
+        if value.len() < 2{
+            return Err(ErrorBadRequest)
+        };
+        let file_name_len = u16::from_be_bytes(value[0..2].try_into().unwrap());
+        let name_start: usize = 2;
+        let name_end = name_start + file_name_len as usize;
+        let payload_size_end = name_end + 8;
+
+        let filename_bytes: &_ = value
+            .get(name_start..name_end)
+            .ok_or(ErrorBadRequest)?;
+        let name = String::from_utf8(filename_bytes.to_vec())
+            .map_err(|_| ErrorBadRequest)?;
+
+        let payload_size_bytes = value
+            .get(name_end..payload_size_end)
+            .ok_or(ErrorBadRequest)?;
+
+        let payload_size: u64 = u64::from_be_bytes(payload_size_bytes.try_into().unwrap());
+        let chunk_size =  value.len()  - (2 + name.len() + 8);
+        if chunk_size > MAX_CHUNK_SIZE {return  Err(ErrorBadRequest)}
+        let chunk = value
+            .get(payload_size_end .. payload_size_end + chunk_size)
+            .ok_or(ErrorBadRequest)?;
+        Ok(UploadReq
+        {
+            filename_len: name.len() as u16,
+            filename: name,
+            payload_size,
+            chunk: chunk.to_vec()
+        })
+
+
+
+
+    }
+}
 impl TryInto<Vec<u8>> for ListReq
 {
     type Error = ErrorCode;

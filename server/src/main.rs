@@ -1,14 +1,13 @@
 mod request_handler;
 mod disk_handler;
 
-use protocol::header;
+
 use std::error::Error;
 use std::net::{SocketAddr};
-use tokio::io::{AsyncReadExt};
 use tokio::net::{TcpListener};
 use dotenvy::dotenv;
 use std::env;
-use crate::request_handler::{handle_header};
+use crate::request_handler::{ request_handler};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn Error>>
@@ -27,27 +26,9 @@ async fn main() ->Result<(), Box<dyn Error>>
         let (mut socket ,client)=  listener.accept().await?;
         tokio::spawn(async move
             {
-                let mut header_buff = [0;header::REQUEST_HEADER_SIZE];
                 loop {
-                    let n = match socket.read_exact(&mut header_buff ).await {
-                        Ok(0) => return,
-                        Ok(n) => println!("have read: {} bytes from: {}", n,client ),
-                        Err(e) =>
-                            {
-                                eprintln!("error reading from socket: {:#}", e);
-                                return;
-                            }
-                    };
-                    match handle_header(&mut socket, &header_buff).await
-                    {
-                        Ok(()) => {},
-                        Err(e) =>
-                            {
-                                println!("error handling client: {client}");
-                                break
-                            }
-                    }
-
+                    request_handler(&mut socket).await
+                        .expect("failed handling client");
 
 
                 }

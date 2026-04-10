@@ -6,9 +6,11 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 use tokio::net::TcpSocket;
-use crate::request_handler::send_list_request;
+use crate::request_handler::{send_list_request, send_upload_request};
 use dotenvy::dotenv;
-use std::env;
+use std::{env, io};
+use std::path::Path;
+
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
 
@@ -23,10 +25,34 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     println!("connecting to server on: {addr}...");
     let socket = TcpSocket::new_v4()?;
     let mut stream = socket.connect(addr).await?;
-    match send_list_request(&mut stream).await
-    {
-        Err(e) => println!("shit went south!"),
-        Ok(_) => println!("ok ")
+    loop {
+
+        let mut input = String::new();
+        println!("what would you like to do:\n1) request file list\n2) upload a file to server\nexit to exit");
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
+        let clean_input = input.trim();
+        match clean_input
+        {
+            "1" => send_list_request(&mut stream)
+                .await.expect("failed to send request"),
+            "2" =>
+                {
+                    let file_path = String::new();
+                    println!("enter full file path please");
+                    io::stdin()
+                        .read_line(&mut input)
+                        .expect("Failed to read line");
+                    let clean_path = file_path.trim();
+                    let path = Path::new(clean_path);
+                    send_upload_request(path, &mut stream).await
+                        .expect("failed to upload file")
+
+                },
+            "exit" => break,
+            _ => {}
+        };
     }
     Ok(())
 

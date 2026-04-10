@@ -1,6 +1,6 @@
-use std::cmp::{max, min};
-use std::fs::metadata;
+use std::cmp::{ min};
 use std::os::windows::fs::MetadataExt;
+use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -8,7 +8,7 @@ use protocol::header::{ ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
 use protocol::request::{ListReq, Request, UploadReq};
 use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorConnection, ErrorIo, ErrorNotFound};
-use crate::handle_response::handle_response_header;
+use crate::handle_response::{handle_lst_response, handle_upload_response};
 
 pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
 {
@@ -39,7 +39,7 @@ pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
 
     match resp_header.get_status_code()
     {
-        StatusCode::Ok => handle_response_header(stream, & resp_header).await?,
+        StatusCode::Ok => handle_lst_response(stream, & resp_header).await?,
         error =>
             {
                 eprintln!("server responded with error: {:?}", error);
@@ -49,17 +49,21 @@ pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
     Ok(())
 }
 
-pub async fn send_upload_request(file_path: &str , file_name: &str,stream :&mut TcpStream)->Result<(), ErrorCode>
+pub async fn send_upload_request(path  : &Path,stream :&mut TcpStream)->Result<(), ErrorCode>
 {
-    let mut file = File::open(file_path).await
+    let mut file = File::open(path).await
         .map_err(|_| ErrorNotFound)?;
     let metadata = file.metadata().await
         .map_err(|_| ErrorIo)?;
-
+    let file_name = path.file_name()
+        .ok_or(ErrorNotFound)?;
+    let file_name_str = file_name.to_str()
+        .ok_or(ErrorNotFound)?;
 
     //windows specific
     let payload_size = metadata.file_size();
-    let name_len = file_name.len() as u16;
+
+    let name_len = file_name_str.len() as u16;
     print!("meta data : {:?}", payload_size);
     let mut first_chunk = vec![0u8; min(MAX_CHUNK_SIZE, payload_size as usize)];
 
@@ -67,7 +71,7 @@ pub async fn send_upload_request(file_path: &str , file_name: &str,stream :&mut 
         .map_err(|_| ErrorIo)?;
 
 
-    let request = Request::<UploadReq>::new(file_name.to_string(), name_len,payload_size , first_chunk);
+    let request = Request::<UploadReq>::new(file_name_str.to_string(), name_len,payload_size , first_chunk);
     let req_bytes :Vec<u8> = request.try_into()?;
     stream.write_all(&req_bytes).await
         .map_err(|_| ErrorConnection)?;
@@ -82,6 +86,10 @@ pub async fn send_upload_request(file_path: &str , file_name: &str,stream :&mut 
             .map_err(|_| ErrorConnection)?;
         reminder -=n as u64;
     }
+    let mut resp_buff = [0u8;RESPONSE_HEADER_SIZE];
+    stream.read_exact(&mut resp_buff).await
+        .map_err(|_| ErrorConnection)?;
+    let resp_header = ResponseHeader::try_from(&resp_buff)?;
 
-    Ok(())
+    handle_upload_response(&resp_header)
 }

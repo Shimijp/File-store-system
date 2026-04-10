@@ -1,25 +1,37 @@
-
-use tokio::io::AsyncWriteExt;
+use std::cmp::min;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{ TcpStream};
-use protocol::header::{Opcode, RequestHeader, REQUEST_HEADER_SIZE};
-use protocol::response::{ListResp, Response};
-use protocol::utils::{ ErrorCode};
-use protocol::utils::ErrorCode::{ErrorConnection, ErrorIo};
-use lazy_static::lazy_static;
+use protocol::header::{Opcode, RequestHeader, REQUEST_HEADER_SIZE, RESPONSE_HEADER_SIZE};
+use protocol::response::{ErrorResp, ListResp, Response, UploadResp};
+use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
+use protocol::utils::ErrorCode::{ErrorBadRequest, ErrorConnection, ErrorIo};
+use protocol::request::{ UploadReq};
+use crate::disk_handler::{creat_new_file, get_file_lst, PATH};
 
-use crate::disk_handler::get_file_lst;
-const PATH_ENV : &str= "FILE_PATH";
-lazy_static!
+
+pub async fn request_handler(stream: &mut TcpStream) -> Result<(), ErrorCode>
 {
-   static ref PATH : String =
+   let mut  req_bytes = [0u8;REQUEST_HEADER_SIZE];
+   stream.read(&mut req_bytes).await
+       .map_err(|_| ErrorConnection)?;
+
+   match handle_header(stream, &req_bytes).await
    {
-      get_path()
-   };
+      Ok(()) => Ok(()),
+      Err(e) =>
+         {
+            println!("{e}");
+            let err_resp = Response::<ErrorResp>::new(e);
+            let resp_bytes: Vec<u8>= Response::try_into(err_resp)?;
+
+            stream.write(&resp_bytes).await
+                .map_err(|_| ErrorConnection)?;
+            Ok(())
+         }
+   }
+
 }
-pub fn get_path()->String
-{
-   std::env::var(PATH_ENV).expect("PATH must be set!")
-}
+
 pub async fn handle_header(stream: &mut TcpStream, header_bytes: &[u8;REQUEST_HEADER_SIZE]) -> Result<(),ErrorCode>
 {
 
@@ -27,6 +39,7 @@ pub async fn handle_header(stream: &mut TcpStream, header_bytes: &[u8;REQUEST_HE
    match header.get_opcode()
    {
       Opcode::LIST => handle_lst_request(stream).await?,
+      Opcode::UPLOAD => handle_upload_request(&header, stream).await?,
       _ =>
          {
             println!("unimplemented!")
@@ -59,8 +72,41 @@ pub async fn handle_lst_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
          }
    }
    
-   
+
+}
+
+pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut TcpStream) ->Result<(), ErrorCode>
+{
+   let payload_size = request_header.get_payload_len();
+   if payload_size == 0
+   {
+      return Err(ErrorBadRequest)
+   }
+   let mut data_buff = vec![0u8;min(payload_size as usize, MAX_CHUNK_SIZE)];
+   let n  = stream.read(&mut data_buff).await
+       .map_err(|_| ErrorConnection)?;
+
+   if n == 0 {return Err(ErrorBadRequest)}
+   let request = UploadReq::try_from(&data_buff)?;
+   //
+   let filename = request.get_file_name();
+   let mut file = creat_new_file(&filename).await?;
+   let mut reminder = payload_size - n as u64;
+   let mut buffer = vec![0u8; min(MAX_CHUNK_SIZE, reminder as usize)];
+   while reminder > 0 {
+      let n = stream.read(&mut buffer).await
+          .map_err(|_| ErrorConnection)?;
+      if n == 0 {break};
+      file.write(&buffer).await
+          .map_err(|_| ErrorIo)?;
+      reminder -= n as u64;
+   }
 
 
+
+
+
+
+   Ok(())
 }
 

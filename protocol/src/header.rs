@@ -58,7 +58,7 @@ impl RequestHeader
     pub fn get_opcode(&self) -> Opcode{
         self.opcode
     }
-    pub fn get_payload_len(self)-> u64
+    pub fn get_payload_len(&self)-> u64
     {
         self.payload_len
     }
