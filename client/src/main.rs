@@ -47,8 +47,10 @@ async fn main()  -> Result<(), Box<dyn Error>>{
                     let clean_path = file_path.trim();
                     println!("clean path: {clean_path}");
                     let path = Path::new(clean_path);
-                    send_upload_request(path, &mut stream).await
-                        .expect("failed to upload file")
+                    if let Err(e) = send_upload_request(path, &mut stream).await
+                    {
+                        println!("{e}");
+                    }
 
                 },
             "exit" => break,

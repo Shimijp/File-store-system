@@ -21,6 +21,7 @@ pub async fn request_handler(stream: &mut TcpStream) -> Result<(), ErrorCode>
       Err(e) =>
          {
             println!("{e}");
+
             let err_resp = Response::<ErrorResp>::new(e);
             let resp_bytes: Vec<u8>= Response::try_into(err_resp)?;
 
@@ -87,26 +88,30 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
        .map_err(|_| ErrorConnection)?;
 
    if n == 0 {return Err(ErrorBadRequest)}
-   println!("starting read");
    let request = UploadReq::try_from(&data_buff)?;
-   //
+
    let filename = request.get_file_name();
    let mut file = creat_new_file(&filename).await?;
-   let mut reminder = payload_size - n as u64;
+
+   let first_chunk = request.get_chunk();
+   file.write_all(first_chunk).await
+       .map_err(|_| ErrorIo)?;
+
+   let mut reminder = payload_size - first_chunk.len() as u64;
    let mut buffer = vec![0u8; min(MAX_CHUNK_SIZE, reminder as usize)];
    while reminder > 0 {
       let n = stream.read(&mut buffer).await
           .map_err(|_| ErrorConnection)?;
       if n == 0 {break};
-      file.write(&buffer).await
+      file.write_all(&buffer[..n]).await
           .map_err(|_| ErrorIo)?;
       reminder -= n as u64;
    }
 
-
-
-
-
+   let resp = Response::<UploadResp>::new();
+   let resp_bytes: Vec<u8> = resp.try_into()?;
+   stream.write_all(&resp_bytes).await
+       .map_err(|_| ErrorConnection)?;
 
    Ok(())
 }

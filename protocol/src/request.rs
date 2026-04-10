@@ -38,6 +38,9 @@ impl UploadReq {
     pub fn get_file_name(&self) -> &str{
          self.filename.as_str()
     }
+    pub fn get_chunk(&self) -> &[u8]{
+        &self.chunk
+    }
 }
 
 impl<T> TryInto<Vec<u8>> for Request<T>
