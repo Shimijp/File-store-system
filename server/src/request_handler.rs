@@ -133,8 +133,8 @@ pub async fn handle_download_request(request_header: &RequestHeader, stream : &m
     let n  = stream.read(&mut data_buff).await
         .map_err(|_| ErrorConnection)?;
     if n == 0 {return Err(ErrorBadRequest)}
-    let file_name = String::from_utf8(data_buff)
-        .map_err(|_| ErrorBadRequest)?;
+    let request = protocol::request::DownloadReq::try_from(&data_buff)?;
+    let file_name = request.get_file_name();
 
     let mut file = open_file(&file_name).await?;
     let metadata = file.metadata().await

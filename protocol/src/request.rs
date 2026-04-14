@@ -17,6 +17,13 @@ pub struct DownloadReq
     filename_len : u16,
     filename : String
 }
+
+impl DownloadReq {
+    pub fn get_file_name(&self) -> &str {
+        self.filename.as_str()
+    }
+}
+
 pub struct DeleteReq
 {
     filename_len : u16,
@@ -105,6 +112,31 @@ impl TryFrom<&Vec<u8>> for UploadReq
 
 
 
+    }
+}
+impl TryFrom<&Vec<u8>> for DownloadReq
+{
+    type Error = ErrorCode;
+
+    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
+        if value.len() < 2{
+            return Err(ErrorBadRequest)
+        };
+        let file_name_len = u16::from_be_bytes(value[0..2].try_into().unwrap());
+        let name_start: usize = 2;
+        let name_end = name_start + file_name_len as usize;
+
+        let filename_bytes: &_ = value
+            .get(name_start..name_end)
+            .ok_or(ErrorBadRequest)?;
+        let name = String::from_utf8(filename_bytes.to_vec())
+            .map_err(|_| ErrorBadRequest)?;
+
+        Ok(DownloadReq
+        {
+            filename_len: name.len() as u16,
+            filename: name
+        })
     }
 }
 impl TryInto<Vec<u8>> for ListReq
