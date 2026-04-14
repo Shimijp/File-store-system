@@ -2,11 +2,11 @@ use std::cmp::min;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{ TcpStream};
 use protocol::header::{Opcode, RequestHeader, REQUEST_HEADER_SIZE, RESPONSE_HEADER_SIZE};
-use protocol::response::{ErrorResp, ListResp, Response, UploadResp};
+use protocol::response::{DownloadResp, ErrorResp, ListResp, Response, UploadResp};
 use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorBadRequest, ErrorConnection, ErrorIo};
 use protocol::request::{ UploadReq};
-use crate::disk_handler::{creat_new_file, get_file_lst, PATH};
+use crate::disk_handler::{creat_new_file, get_file_lst, open_file, PATH};
 use indicatif::ProgressBar;
 
 
@@ -42,6 +42,7 @@ pub async fn handle_header(stream: &mut TcpStream, header_bytes: &[u8;REQUEST_HE
    {
       Opcode::LIST => handle_lst_request(stream).await?,
       Opcode::UPLOAD => handle_upload_request(&header, stream).await?,
+        Opcode::DOWNLOAD => handle_download_request(&header, stream).await?,
       _ =>
          {
             println!("unimplemented!")
@@ -131,19 +132,20 @@ pub async fn handle_download_request(request_header: &RequestHeader, stream : &m
     let mut data_buff = vec![0u8;payload_size as usize];
     let n  = stream.read(&mut data_buff).await
         .map_err(|_| ErrorConnection)?;
-    if n == 0 || n != payload_size {return Err(ErrorBadRequest)}
+    if n == 0 {return Err(ErrorBadRequest)}
     let file_name = String::from_utf8(data_buff)
         .map_err(|_| ErrorBadRequest)?;
-    let path = PATH.join(&file_name);
-    let mut file = File::open(path).await
-        .map_err(|_| ErrorNotFound)?;
+
+    let mut file = open_file(&file_name).await?;
     let metadata = file.metadata().await
         .map_err(|_| ErrorIo)?;
-    let file_size = metadata.file_size();
+    let file_size = metadata.len();
     let mut buffer = vec![0u8; min(MAX_CHUNK_SIZE, file_size as usize)];
     let mut reminder = file_size;
     let resp = Response::<DownloadResp>::new(file_size, buffer.clone());
     let resp_bytes: Vec<u8> = resp.try_into()?;
+    stream.write_all(&resp_bytes).await
+        .map_err(|_| ErrorConnection)?;
 
     while reminder > 0 {
         let n = file.read(&mut buffer).await

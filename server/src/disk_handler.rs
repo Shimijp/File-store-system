@@ -2,6 +2,7 @@ use std::io::ErrorKind::FileTooLarge;
 use lazy_static::lazy_static;
 use tokio::{fs, io};
 use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use protocol::response::FileEntry;
 use protocol::utils;
 use protocol::utils::ErrorCode;
@@ -60,8 +61,21 @@ pub async fn creat_new_file(filename: &str)->Result<File, ErrorCode>
     Ok(file)
 
 
-
-
 }
 
+pub async fn open_file(filename: &str) ->Result<File, ErrorCode>
+{
+    let path = PATH.as_str();
+    let full_path = path.to_owned() + "/" + filename;
+
+    let file = File::open(full_path).await
+        .map_err(|_| ErrorCode::ErrorNotFound)?;
+    Ok(file)
+}
+pub async fn write_to_file(file: &mut File, buffer: &[u8]) ->Result<(), ErrorCode>
+{
+    file.write_all(buffer).await
+        .map_err(|_| ErrorCode::ErrorIo)?;
+    Ok(())
+}
 
