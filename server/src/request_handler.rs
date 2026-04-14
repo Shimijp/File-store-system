@@ -13,7 +13,7 @@ use indicatif::ProgressBar;
 pub async fn request_handler(stream: &mut TcpStream) -> Result<(), ErrorCode>
 {
    let mut  req_bytes = [0u8;REQUEST_HEADER_SIZE];
-   stream.read(&mut req_bytes).await
+   stream.read_exact(&mut req_bytes).await
        .map_err(|_| ErrorConnection)?;
 
    match handle_header(stream, &req_bytes).await
@@ -125,10 +125,13 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
 pub async fn handle_download_request(request_header: &RequestHeader, stream : &mut TcpStream) ->Result<(), ErrorCode>
 {
    let name_len  = request_header.get_filename_len() as usize;
+    println!("name len: {name_len}");
     let mut data_buff = vec![0u8;name_len];
     let n  = stream.read(&mut data_buff).await
         .map_err(|_| ErrorConnection)?;
+    println!("read {n} bytes for file name");
     if n == 0 {return Err(ErrorBadRequest)}
+    println!("file name bytes: {:?}", &data_buff);
     let request = DownloadReq::try_from(&data_buff)?;
     let file_name = request.get_file_name();
 
