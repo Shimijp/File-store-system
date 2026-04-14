@@ -126,7 +126,7 @@ pub async fn handle_download_request(request_header: &RequestHeader, stream : &m
 {
    let name_len  = request_header.get_filename_len() as usize;
     println!("name len: {name_len}");
-    let mut data_buff = vec![0u8;name_len];
+    let mut data_buff = vec![0u8;name_len + 2];
     let n  = stream.read(&mut data_buff).await
         .map_err(|_| ErrorConnection)?;
     println!("read {n} bytes for file name");
