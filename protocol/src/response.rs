@@ -1,14 +1,9 @@
 use std::fmt::{Display, Formatter};
-use std::io;
 use std::io::{Cursor, ErrorKind, Read};
 use crate::header::{ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
-use crate::utils::ErrorCode::{ErrorBadResponse, ErrorExists, ErrorNotFound, UnknownErr};
-use crate::utils::{ErrorCode, MAGIC, MAX_CHUNK_SIZE, VERSION};
+use crate::utils::ErrorCode::{ErrorBadResponse, UnknownErr};
+use crate::utils::{ErrorCode, MAX_CHUNK_SIZE};
 
-type UploadResponse = Response<UploadResp>;
-type ListResponse = Response<ListResp>;
-type DeleteResponse = Response<DeleteResp>;
-type ErrorResponse = Response<ErrorResp>;
 
 pub struct Response<T>
 where
@@ -160,6 +155,7 @@ impl Response<DownloadResp> {
             },
         }
     }
+
 }
 impl Response<ListResp> {
     pub fn new(list: Vec<FileEntry>, file_count: u32, size: u64) -> Self {
@@ -246,6 +242,28 @@ impl TryFrom<&Vec<u8>> for ListResp
         Ok(ListResp {
             file_count,
             entries: items,
+        })
+    }
+}
+
+impl TryFrom<Vec<u8>> for DownloadResp
+{
+    type Error = ErrorCode;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        if value.len() < 8
+        {
+            return Err(ErrorBadResponse)
+        }
+        let payload_size = u64::from_be_bytes(value[0..8].try_into().unwrap());
+        let chunk = value[8..].to_vec();
+        if chunk.len() > MAX_CHUNK_SIZE || chunk.len() > payload_size as usize
+        {
+            return Err(ErrorBadResponse)
+        }
+        Ok(DownloadResp {
+            payload_size,
+            chunk,
         })
     }
 }

@@ -5,12 +5,12 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use protocol::header::{ ResponseHeader, StatusCode, RESPONSE_HEADER_SIZE};
-use protocol::request::{ListReq, Request, UploadReq};
+use protocol::request::{DownloadReq, ListReq, Request, UploadReq};
 use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorConnection, ErrorIo, ErrorNotFound};
 use indicatif::ProgressBar;
 
-use crate::handle_response::{handle_lst_response, handle_upload_response};
+use crate::handle_response::{handle_download_response, handle_lst_response, handle_upload_response};
 
 pub async fn send_list_request(stream: &mut TcpStream) ->Result<(), ErrorCode>
 {
@@ -96,4 +96,19 @@ pub async fn send_upload_request(path  : &Path,stream :&mut TcpStream)->Result<(
     let resp_header = ResponseHeader::try_from(&resp_buff)?;
 
     handle_upload_response(&resp_header)
+}
+pub async fn send_download_request(file_name : &str,  stream: &mut TcpStream) ->Result<(), ErrorCode>
+{
+    let name_len = file_name.len() as u16;
+    let request = Request::<DownloadReq>::new(file_name.to_string(), name_len);
+    let req_bytes :Vec<u8> = request.try_into()?;
+    stream.write_all(&req_bytes).await
+        .map_err(|_| ErrorConnection)?;
+    let mut resp_buff = [0u8;RESPONSE_HEADER_SIZE];
+    stream.read_exact(&mut resp_buff).await
+        .map_err(|_| ErrorConnection)?;
+    let resp_header = ResponseHeader::try_from(&resp_buff)?;
+    handle_download_response(&resp_header, stream, file_name).await?;
+    Ok(())
+
 }

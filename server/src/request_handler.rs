@@ -121,4 +121,39 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
 
    Ok(())
 }
+pub async fn handle_download_request(request_header: &RequestHeader, stream : &mut TcpStream) ->Result<(), ErrorCode>
+{
+   let payload_size = request_header.get_payload_len();
+    if payload_size == 0
+    {
+        return Err(ErrorBadRequest)
+    }
+    let mut data_buff = vec![0u8;payload_size as usize];
+    let n  = stream.read(&mut data_buff).await
+        .map_err(|_| ErrorConnection)?;
+    if n == 0 || n != payload_size {return Err(ErrorBadRequest)}
+    let file_name = String::from_utf8(data_buff)
+        .map_err(|_| ErrorBadRequest)?;
+    let path = PATH.join(&file_name);
+    let mut file = File::open(path).await
+        .map_err(|_| ErrorNotFound)?;
+    let metadata = file.metadata().await
+        .map_err(|_| ErrorIo)?;
+    let file_size = metadata.file_size();
+    let mut buffer = vec![0u8; min(MAX_CHUNK_SIZE, file_size as usize)];
+    let mut reminder = file_size;
+    let resp = Response::<DownloadResp>::new(file_size, buffer.clone());
+    let resp_bytes: Vec<u8> = resp.try_into()?;
+
+    while reminder > 0 {
+        let n = file.read(&mut buffer).await
+            .map_err(|_| ErrorIo)?;
+        if n == 0 { break }
+        stream.write_all(&buffer[..n]).await
+            .map_err(|_| ErrorConnection)?;
+       reminder -= n as u64;
+    }
+
+   Ok(())
+}
 

@@ -1,12 +1,13 @@
 mod request_handler;
 mod handle_response;
+mod client_dsk_handler;
 
 use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 use tokio::net::TcpSocket;
-use crate::request_handler::{send_list_request, send_upload_request};
+use crate::request_handler::{send_download_request, send_list_request, send_upload_request};
 use dotenvy::dotenv;
 use std::{env, io};
 use std::path::Path;
@@ -28,7 +29,7 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     loop {
 
         let mut input = String::new();
-        println!("what would you like to do:\n1) request file list\n2) upload a file to server\nexit to exit");
+        println!("what would you like to do:\n1) request file list\n2) upload a file to server\n3) download file\nexit to exit");
         io::stdin()
             .read_line(&mut input)
             .expect("Failed to read line");
@@ -53,6 +54,21 @@ async fn main()  -> Result<(), Box<dyn Error>>{
                     }
 
                 },
+            "3" =>
+                {
+                    let mut file_name = String::new();
+                    println!("enter file name to download");
+                    io::stdin()
+                        .read_line(&mut file_name)
+                        .expect("Failed to read line");
+                    let clean_file_name = file_name.trim();
+                    println!("clean file name: {clean_file_name}");
+                    if let Err(e) = send_download_request(clean_file_name, &mut stream).await
+                    {
+                        println!("{e}");
+                    }
+                }
+             ,
             "exit" => break,
             _ => {}
         };

@@ -1,10 +1,7 @@
 use crate::header::{RequestHeader, Opcode, REQUEST_HEADER_SIZE};
-use crate::utils::{ErrorCode, MAGIC, MAX_CHUNK_SIZE, VERSION};
+use crate::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use crate::utils::ErrorCode::{ErrorBadRequest, UnknownErr};
 
-type ListRequest = Request<ListReq>;
-type DownloadRequest = Request<DownloadReq>;
-type DeleteRequest = Request<DeleteReq>;
 
 pub struct Request<T>
 where

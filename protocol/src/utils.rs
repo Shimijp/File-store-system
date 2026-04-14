@@ -1,7 +1,7 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display};
 use crate::header::StatusCode;
-use crate::utils::ErrorCode::ErrorExists;
+
 
 pub const MAGIC: u16 = (0x46 << 8) | (0x53);
 pub const VERSION: u8 = 0x1;
@@ -30,7 +30,7 @@ impl ErrorCode
             ErrorCode::ErrorIo => StatusCode::ErrorIo,
             ErrorCode::ErrorBadRequest => StatusCode::ErrorBadRequest,
             ErrorCode::ErrorNotFound => StatusCode::ErrorNotFound,
-            ErrorExists => StatusCode::ErrorExists,
+            ErrorCode::ErrorExists => StatusCode::ErrorExists,
             _ => StatusCode::ErrorBadRequest
 
         };
