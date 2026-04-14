@@ -121,8 +121,6 @@ impl TryInto<Vec<u8>> for DownloadResp {
             return Err(ErrorBadResponse);
         }
         let mut buffer = Vec::new();
-        let payload_len_bytes = self.payload_size.to_be_bytes();
-        buffer.extend(payload_len_bytes);
         buffer.extend(self.chunk);
 
         Ok(buffer)

@@ -1,7 +1,7 @@
 use tokio::fs::File;
 use protocol::utils::ErrorCode;
 use protocol::utils::ErrorCode::ErrorExists;
-const PATH : &str = "~Downloads";
+const PATH : &str = r"C:\Users\shimo\Desktop\stuff";
 pub async fn creat_new_file(filename: &str) ->Result<File, ErrorCode>
 {
     let path = PATH;

@@ -75,10 +75,11 @@ pub async fn  handle_download_response(resp_header: &ResponseHeader , stream : &
         let n = stream.read(&mut filebuff).await
             .map_err(|_| ErrorConnection)?;
         if n == 0 { break }
-        file.write(&filebuff[..n]).await
+        file.write_all(&filebuff).await
             .map_err(|_| ErrorCode::ErrorIo)?;
         reminder -= n as u64;
     }
+
     Ok(())
 }
 
