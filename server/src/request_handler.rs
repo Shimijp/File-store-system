@@ -5,7 +5,7 @@ use protocol::header::{Opcode, RequestHeader, REQUEST_HEADER_SIZE, RESPONSE_HEAD
 use protocol::response::{DownloadResp, ErrorResp, ListResp, Response, UploadResp};
 use protocol::utils::{ErrorCode, MAX_CHUNK_SIZE};
 use protocol::utils::ErrorCode::{ErrorBadRequest, ErrorConnection, ErrorIo};
-use protocol::request::{ UploadReq};
+use protocol::request::{DownloadReq, UploadReq};
 use crate::disk_handler::{creat_new_file, get_file_lst, open_file, PATH};
 use indicatif::ProgressBar;
 
@@ -124,16 +124,12 @@ pub async fn handle_upload_request(request_header: &RequestHeader, stream : &mut
 }
 pub async fn handle_download_request(request_header: &RequestHeader, stream : &mut TcpStream) ->Result<(), ErrorCode>
 {
-   let payload_size = request_header.get_payload_len();
-    if payload_size == 0
-    {
-        return Err(ErrorBadRequest)
-    }
-    let mut data_buff = vec![0u8;payload_size as usize];
+   let name_len  = request_header.get_filename_len() as usize;
+    let mut data_buff = vec![0u8;name_len];
     let n  = stream.read(&mut data_buff).await
         .map_err(|_| ErrorConnection)?;
     if n == 0 {return Err(ErrorBadRequest)}
-    let request = protocol::request::DownloadReq::try_from(&data_buff)?;
+    let request = DownloadReq::try_from(&data_buff)?;
     let file_name = request.get_file_name();
 
     let mut file = open_file(&file_name).await?;

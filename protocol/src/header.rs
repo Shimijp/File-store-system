@@ -62,6 +62,9 @@ impl RequestHeader
     {
         self.payload_len
     }
+    pub fn get_filename_len(&self) -> u16 {
+        self.filename_len
+    }
 }
 
 impl ResponseHeader

@@ -72,10 +72,5 @@ pub async fn open_file(filename: &str) ->Result<File, ErrorCode>
         .map_err(|_| ErrorCode::ErrorNotFound)?;
     Ok(file)
 }
-pub async fn write_to_file(file: &mut File, buffer: &[u8]) ->Result<(), ErrorCode>
-{
-    file.write_all(buffer).await
-        .map_err(|_| ErrorCode::ErrorIo)?;
-    Ok(())
-}
+
 
